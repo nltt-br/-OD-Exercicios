@@ -86,10 +86,10 @@ def embed_lsb_rgb(image_rgb, watermark, top=0, left=0, channel=2): # channel 0=R
     img_copy = image_rgb.copy() # Cria uma cópia da imagem RGB
     h, w = watermark.shape # Obtém as dimensões da marca d'água
 
-    # Itera sobre cada pixel da marca d'água
+    # Itera sobre cada pixel do watermark
     for i in range(h):
         for j in range(w):
-            # Verifica se as coordenadas da marca d'água estão dentro dos limites da imagem
+            # Verifica se as coordenadas do watermark estão dentro dos limites da imagem
             if top + i < img_copy.shape[0] and left + j < img_copy.shape[1]:
                 # Obtém o valor do pixel no canal de cor especificado
                 pixel_channel = img_copy[top+i, left+j, channel]
@@ -97,8 +97,8 @@ def embed_lsb_rgb(image_rgb, watermark, top=0, left=0, channel=2): # channel 0=R
                 pixel_channel = (pixel_channel & 0xFE) | watermark[i, j]
                 img_copy[top+i, left+j, channel] = pixel_channel # Atualiza o pixel no canal
             # else:
-            #     print(f"Aviso RGB: Marca d'água excede os limites da imagem em ({top+i}, {left+j}).")
-    return img_copy # Retorna a imagem RGB com a marca d'água
+            #     print(f"Aviso RGB: Watermark excede os limites da imagem em ({top+i}, {left+j}).")
+    return img_copy # Retorna a imagem RGB com o watermark
 
 # Esta função extrai uma marca d'água de um canal específico de uma imagem RGB.
 def extract_lsb_rgb(image_rgb, marca_shape, top=0, left=0, channel=2): # channel 0=R, 1=G, 2=B
@@ -252,7 +252,15 @@ if __name__ == "__main__":
     plt.imshow(marca_extraida_gray, cmap='gray') # Exibe a marca d'água extraída
     plt.title("Marca d'água Extraída (Original)")
     plt.tight_layout() # Ajusta o layout para evitar sobreposição de títulos
-    plt.show() # Mostra a figura
+    plt.show()
+
+    # --- Análise da Parte 0 ---
+    # Resultados: As imagens 'Original' e 'Marcada' são visualmente indistinguíveis,
+    # demonstrando a imperceptibilidade do método LSB. A 'Marca d'água Extraída'
+    # é idêntica à marca d'água original, confirmando a correta incorporação e extração
+    # em um cenário ideal.
+    # Dificuldades: Nenhuma nesta fase, o processo é direto e eficaz sem interferências externas.
+
 
     # --- 1. Comparação de Qualidade (PSNR) ---
     print("\n--- 1. Comparação de Qualidade (PSNR) ---")
@@ -261,8 +269,17 @@ if __name__ == "__main__":
     print(f"PSNR entre a imagem original e a marcada: {psnr_value:.2f} dB")
     print("Um PSNR alto indica que a marca d'água é visualmente imperceptível.")
 
+    # --- Análise da Parte 1 ---
+    # Resultados: O PSNR será muito alto (geralmente acima de 40 dB ou 'inf'), o que reforça
+    # que a alteração no LSB dos pixels é mínima e não causa degradação visual perceptível
+    # na imagem marcada.
+    # Dificuldades: Nenhuma. O cálculo é matemático e direto.
+
+
     # --- Parte 2: Testes de Robustez ---
     print("\n--- 2. Testes de Robustez ---")
+    # A robustez mede a capacidade da marca d'água de resistir a ataques ou modificações.
+    # O LSB é conhecido por sua baixa robustez.
 
     # Teste com Ruído Aleatório (Gaussiano)
     print("\n  a) Teste com Ruído Aleatório:")
@@ -289,6 +306,15 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.show()
     print("A marca d'água extraída após adicionar ruído deve estar visivelmente corrompida, destacando a fragilidade do LSB.")
+
+    # --- Análise do Teste com Ruído ---
+    # Resultados: A imagem da 'Marca d'água Extraída (Ruído)' aparece completamente
+    # desorganizada e irreconhecível.
+    # Dificuldades: A fragilidade do LSB é evidente aqui. Qualquer pequena alteração
+    # nos valores dos pixels, como a adição de ruído aleatório (que modifica diretamente
+    # os bits dos pixels), compromete drasticamente a marca d'água escondida. Isso ocorre
+    # porque a marca d'água reside justamente nos bits mais vulneráveis.
+
 
     # Teste com Compressão JPEG
     print("\n  b) Teste com Compressão JPEG:")
@@ -318,6 +344,15 @@ if __name__ == "__main__":
     plt.show()
     print("A marca d'água extraída após compressão JPEG deve estar severamente corrompida, demonstrando a baixa robustez do LSB a este tipo de ataque.")
 
+    # --- Análise do Teste com Compressão JPEG ---
+    # Resultados: A 'Marca d'água Extraída (JPEG)' também estará severamente corrompida,
+    # semelhante ao resultado com ruído.
+    # Dificuldades: A compressão JPEG é um processo com perdas que modifica os bits
+    # dos pixels para reduzir o tamanho do arquivo. Essas modificações afetam diretamente
+    # o LSB, destruindo a marca d'água. Isso mostra que o LSB não é robusto para
+    # cenários onde a imagem será comprimida, um processo muito comum.
+
+
     # --- Parte 3: Esconder uma Pequena Mensagem Textual ---
     print("\n--- 3. Esconder uma Mensagem Textual ---")
     mensagem_secreta = "Olá, LSB é legal! - Recife, PE" # A mensagem de texto a ser escondida
@@ -330,6 +365,7 @@ if __name__ == "__main__":
     marca_w_msg = marca_h_msg
 
     # Ajusta a largura se a área calculada não for suficiente
+    # (garante que todos os bits da mensagem caibam)
     if marca_h_msg * marca_w_msg < num_pixels_necessarios:
         marca_w_msg += 1
 
@@ -372,13 +408,25 @@ if __name__ == "__main__":
     else:
         print("Houve um erro na incorporação ou extração da mensagem.")
 
+    # --- Análise da Parte 3 ---
+    # Resultados: A mensagem é incorporada e extraída perfeitamente, e a imagem
+    # com a mensagem é visualmente idêntica à original.
+    # Dificuldades: A principal dificuldade é o gerenciamento do espaço necessário.
+    # É preciso calcular a área da marca d'água para garantir que todos os bits da
+    # mensagem caibam na imagem sem exceder seus limites ou causar detecção.
+    # Para mensagens muito grandes, o LSB pode não ser a melhor opção, pois demandaria
+    # muitas modificações no LSB, aumentando a chance de detecção ou artefatos.
+
+
     # --- Parte 4: Modificação para Imagens Coloridas (RGB) ---
     print("\n--- 4. Modificação para Imagens Coloridas (RGB) ---")
     img_rgb = setup_image(mode='RGB') # Carrega ou cria uma imagem RGB
     img_array_rgb = np.array(img_rgb) # Converte a imagem PIL para um array NumPy
 
     # Reutiliza a marca d'água aleatória para demonstração em RGB
-    # A marca d'água é incorporada no canal azul (índice 2)
+    # A marca d'água é incorporada no canal azul (índice 2).
+    # O olho humano é menos sensível a mudanças no canal azul e verde,
+    # tornando essas escolhas mais discretas que o canal vermelho.
     img_watermarked_rgb = embed_lsb_rgb(img_array_rgb, marca_aleatoria, top=0, left=0, channel=2)
     img_emb_rgb = Image.fromarray(img_watermarked_rgb)
     img_emb_rgb.save('imagem_marcada_rgb.png') # Salva a imagem RGB marcada
@@ -406,7 +454,18 @@ if __name__ == "__main__":
     else:
         print("Erro na incorporação ou extração da marca d'água RGB.")
 
-    # --- Limpeza de arquivos gerados ---
+    # --- Análise da Parte 4 ---
+    # Resultados: O processo funciona de forma idêntica às imagens em escala de cinza,
+    # com a imagem marcada sendo visualmente igual à original e a marca d'água
+    # extraída corretamente.
+    # Dificuldades: A principal consideração é a escolha do canal. A incorporação em
+    # um canal específico (como o azul ou verde) tende a ser menos perceptível ao olho
+    # humano do que no canal vermelho. O LSB em RGB pode, teoricamente, esconder
+    # três vezes mais dados (um bit por canal), mas isso aumenta a chance de detecção
+    # ou artefatos se todos os canais forem usados intensivamente.
+
+
+    # --- Limpeza de arquivos gerados (descomente para ativar) ---
     # print("\n--- Limpando arquivos gerados para nova execução ---")
     # files_to_remove = ['imagem_original.png', 'imagem_marcada.png',
     #                    'imagem_marcada_jpeg.jpg', 'imagem_com_mensagem.png',
